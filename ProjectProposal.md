@@ -4,7 +4,7 @@ Stat 585X: Final Project Proposal
 
 Proposed Topic
 -------------------------
-Many insurance and financial products are sold through advisors. There is a bi-weekly twitter meetup for advisors to talk about relevant industry trends and strategies. These conversations are identified with '\#AdvisorTalk'. 
+Many insurance and financial products are sold through advisors. There is a bi-weekly twitter meetup for advisors to talk about relevant industry trends and strategies. Conversations among these professionals are coordinated using specific hashtags. 
 
 I propose to collect the tweets that compose these conversations, as well as the other twitter information of participants.
 
