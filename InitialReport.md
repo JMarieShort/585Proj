@@ -4,7 +4,7 @@ Twitter Analysis
 
 Background & Objective
 --------------------------------------------------------
-Many insurance and financial products are sold through advisors. There is a biweekly twitter meetup for advisors to talk about relevant industry trends and strategies. These conversations are identified with 'AdvisorTalk'. This project walks through the process of collecting tweets in this conversation series and mapping relationships between the users.
+Many insurance and financial products are sold through advisors. There is a biweekly twitter meetup for advisors to talk about relevant industry trends and strategies. These conversations are identified with specific hashtags. This project walks through the process of collecting tweets in this conversation series and mapping relationships between the users.
 
 Data Collection
 --------------------------------------------------------
@@ -42,22 +42,23 @@ Collection is also affected by rate limiting as described on the [twitter develo
 
 
 ```r
-rsTweets <- searchTwitter("#AdvisorTalk", n = 500)
-tweets.df2 <- twListToDF(rsTweets)
+term<-########
+rsTweets <- searchTwitter(term, n=500)
+tweets.df2<-twListToDF(rsTweets)
 
-users <- unique(llply(rsTweets, screenName))
+users<-unique(llply(rsTweets,screenName))
 
-# have to use a function so the system won't rate limit
-at <- data.frame()
-for (user in users) {
-    # Download latest 100 tweets from the user's timeline
-    tweets <- twListToDF(userTimeline(user, n = 100, includeRts = TRUE))
-    at <- rbind(at, tweets)
-    Sys.sleep(25)
+#have to use a function so the system won't rate limit 
+at<-data.frame()
+for (user in users){
+   # Download latest 100 tweets from the user's timeline
+   tweets <- twListToDF(userTimeline(user,n=100,includeRts=TRUE))
+   at<-rbind(at,tweets)
+   Sys.sleep(25)
 }
 
-saveRDS(tweets.df2, file = paste0("AT_", today(), ".Rdata"))
-saveRDS(at, file = paste0("UserHist_", today(), ".Rdata"))
+saveRDS(tweets.df2, file=paste0("AT_",today(),".Rdata"))
+saveRDS(at, file=paste0("UserHist_",today(),".Rdata"))
 
 ```
 
@@ -77,7 +78,7 @@ Ideally, I would also like to see relationships and user statistics at the time 
 ```r
 collectDates <- c("2014-03-05", "2014-03-20", "2014-04-06")
 
-# AT_test is the list of Advisor Talk tweets
+# AT_test is the list of Conversation tweets
 AT_test <- ldply(collectDates, function(x) {
     res <- readRDS(paste0("AT_", x, ".Rdata"))
     res$ext_dt <- x
@@ -85,7 +86,7 @@ AT_test <- ldply(collectDates, function(x) {
 })
 
 
-# UH_test is all the tweets for users that participated in an Advisor Talk
+# UH_test is all the tweets for users that participated in the conversations
 UH_test <- ldply(collectDates, function(x) {
     res <- readRDS(paste0("UserHist_", x, ".Rdata"))
     res$ext_dt <- x
@@ -120,6 +121,11 @@ userStats <- subset(userStats, screenName %in% AT_summ$screenName)
 userStatsFinal <- merge((at_users[, c(13, 1:12, 14:16)]), merge(userStats, AT_summ, 
     by = "screenName"), by = "screenName")
 
+# search term masked
+userStatsFinal$aflg <- grepl("XXX|XXXXXXXXXX|XXXXX", userStatsFinal$description, 
+    ignore.case = TRUE)
+table(userStatsFinal$aflg)
+
 ```
 
 
@@ -151,22 +157,10 @@ library(igraph)
 userStatsFinal <- readRDS("userStats415.Rdata")
 friend_edge <- readRDS("friends415.Rdata")
 userStatsFinal <- userStatsFinal[, c(2, 1, 3:23)]
-userStatsFinal$pfg_flg <- grepl("PFG|Principal", userStatsFinal$description, 
-    ignore.case = TRUE)
-table(userStatsFinal$pfg_flg)
-```
-
-```
-## 
-## FALSE  TRUE 
-##    57    52
-```
-
-```r
 
 ```
 
-The following variables are now available for each user:   id, screenName, description, statusesCount, followersCount, favoritesCount, friendsCount, url, name, created, protected, verified, location, listedCount, followRequestSent, profileImageUrl, min_dt, max_dt, n_tw, avg_RT, n_AT_tw, n_AT_ses, n_AT_RT, pfg_flg
+The following variables are now available for each user:   id, screenName, description, statusesCount, followersCount, favoritesCount, friendsCount, url, name, created, protected, verified, location, listedCount, followRequestSent, profileImageUrl, min_dt, max_dt, n_tw, avg_RT, n_AT_tw, n_AT_ses, n_AT_RT
 
 Social Network Graphs
 --------------------------------------------------------
@@ -175,17 +169,19 @@ In this section I explore network graphs to visualize relationships among users.
 Since I am only measuring relationships in a pre-determined subset of the population, this dataframe could easily be transformed to change the directionality of the relationship and measure followers. 
 
 ```r
-# issues: friend id was NA
-friend_edge$node_id <- as.character(friend_edge$node_id)
-friend_edge$friend_id <- as.character(friend_edge$friend_id)
-friend_edge$friend <- as.character(friend_edge$friend)
+#issues:
+#friend id was NA
+friend_edge$node_id<-as.character(friend_edge$node_id)
+friend_edge$friend_id<-as.character(friend_edge$friend_id)
+friend_edge$friend<-as.character(friend_edge$friend)
 
 
-# assumes the first 2 columns of edge df are vertices to connect. first
-# column of vertex df should be the id
+#assumes the first 2 columns of edge df are vertices to connect.
+#first column of vertex df should be the id
 
 
-twgr <- graph.data.frame(d = friend_edge, vertices = userStatsFinal)
+twgr <- graph.data.frame(d = friend_edge, 
+                         vertices = userStatsFinal) 
 ```
 
 ```
@@ -196,15 +192,17 @@ twgr <- graph.data.frame(d = friend_edge, vertices = userStatsFinal)
 
 ```r
 
-# tested a few ranges of columns, and found the function didn't like the
-# dates, #because class(date) returns 2 strings
+#tested a few ranges of columns, and found the function didn't like the dates, #because class(date) returns 2 strings
 
 frl <- layout.fruchterman.reingold(twgr)
 al <- layout.auto(twgr)
 
-plot(twgr, layout = al, vertex.label = V(twgr)$screenName, edge.arrow.size = 0.2, 
-    vertex.color = V(twgr)$pfg_flg, vertex.size = log(V(twgr)$n_AT_tw + 1), 
-    main = "Twitter Network")
+plot(twgr, layout=al,
+     vertex.label=V(twgr)$screenName, 
+    edge.arrow.size=.2,
+    vertex.color =V(twgr)$aflg,
+    vertex.size = log(V(twgr)$n_AT_tw + 1),
+    main = 'Twitter Network')
 ```
 
 ![plot of chunk unnamed-chunk-7](figure/unnamed-chunk-71.png) 
@@ -212,11 +210,12 @@ plot(twgr, layout = al, vertex.label = V(twgr)$screenName, edge.arrow.size = 0.2
 ```r
 
 
-# remove periphery users - no friendships
-uss <- userStatsFinal[userStatsFinal$id %in% c(friend_edge$node_id, friend_edge$friend_id), 
-    ]
+#remove periphery users - no friendships
+uss<-userStatsFinal[userStatsFinal$id %in% 
+                        c(friend_edge$node_id,friend_edge$friend_id) ,]
 
-twgr2 <- graph.data.frame(d = friend_edge, vertices = uss)
+twgr2 <- graph.data.frame(d = friend_edge, 
+                         vertices = uss) 
 ```
 
 ```
@@ -227,11 +226,15 @@ twgr2 <- graph.data.frame(d = friend_edge, vertices = uss)
 
 ```r
 
-al <- layout.auto(twgr2)
+ al <- layout.auto(twgr2)
 frl <- layout.fruchterman.reingold(twgr2)
 
-plot(twgr2, layout = frl, vertex.label = V(twgr2)$screenName, edge.arrow.size = 0.2, 
-    vertex.color = V(twgr2)$pfg_flg, vertex.size = 5, main = "Twitter Network")
+plot(twgr2, layout=frl,
+     vertex.label=NA,#V(twgr2)$screenName, 
+    edge.arrow.size=.2,
+    vertex.color =V(twgr2)$aflg,
+    vertex.size = log(V(twgr2)$followersCount),
+    main = 'Twitter Network')
 ```
 
 ![plot of chunk unnamed-chunk-7](figure/unnamed-chunk-72.png) 
@@ -239,6 +242,39 @@ plot(twgr2, layout = frl, vertex.label = V(twgr2)$screenName, edge.arrow.size = 
 ```r
 
 ```
+
+
+Advisor Twitter Activity
+--------------------------------------------------------
+Now, subset to those associated with the company, and look at some summaries, and more focused graphs. I am going to start with the smaller subset, of those who have relationships in this network.
+
+
+```r
+uss_a <- subset(uss, aflg == TRUE)
+```
+
+```
+## Error: object 'aflg' not found
+```
+
+```r
+friends_a <- subset(friend_edge, node_id %in% uss_a$id & friend_id %in% uss_a$id)
+```
+
+```
+## Error: object 'uss_a' not found
+```
+
+```r
+
+```
+
+
+
+
+
+
+
 
 References
 --------------------------------------------------------
@@ -248,6 +284,9 @@ Jeff Gentry (2013). twitteR: R based Twitter client. R package version 1.1.7.
 Garrett Grolemund, Hadley Wickham (2011). Dates and Times Made Easy with
   lubridate. Journal of Statistical Software, 40(3), 1-25. URL
   http://www.jstatsoft.org/v40/i03/.
+
+
+Hillebrand, J. (2013 May 22). Twitter Authentication with R. http://thinktostart.wordpress.com/2013/05/22/twitter-authentification-with-r/.
 
 McFarland, Daniel, Solomon Messing,
  Mike Nowak, and Sean Westwood. 2010. "Social Network Analysis          
