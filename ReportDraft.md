@@ -124,7 +124,6 @@ userStatsFinal <- merge((at_users[, c(13, 1:12, 14:16)]), merge(userStats, AT_su
 # search term masked
 userStatsFinal$aflg <- grepl("XXX|XXXXXXXXXX|XXXXX", userStatsFinal$description, 
     ignore.case = TRUE)
-table(userStatsFinal$aflg)
 
 ```
 
@@ -156,11 +155,10 @@ library(igraph)
 
 userStatsFinal <- readRDS("userStats415.Rdata")
 friend_edge <- readRDS("friends415.Rdata")
-userStatsFinal <- userStatsFinal[, c(2, 1, 3:23)]
 
 ```
 
-The following variables are now available for each user:   id, screenName, description, statusesCount, followersCount, favoritesCount, friendsCount, url, name, created, protected, verified, location, listedCount, followRequestSent, profileImageUrl, min_dt, max_dt, n_tw, avg_RT, n_AT_tw, n_AT_ses, n_AT_RT
+The following variables are now available for each user:   id, screenName, description, statusesCount, followersCount, favoritesCount, friendsCount, url, name, created, protected, verified, location, listedCount, followRequestSent, profileImageUrl, min_dt, max_dt, n_tw, avg_RT, n_AT_tw, n_AT_ses, n_AT_RT, aflg
 
 Social Network Graphs
 --------------------------------------------------------
@@ -250,21 +248,7 @@ Now, subset to those associated with the company, and look at some summaries, an
 
 ```r
 uss_a <- subset(uss, aflg == TRUE)
-```
-
-```
-## Error: object 'aflg' not found
-```
-
-```r
 friends_a <- subset(friend_edge, node_id %in% uss_a$id & friend_id %in% uss_a$id)
-```
-
-```
-## Error: object 'uss_a' not found
-```
-
-```r
 
 ```
 
