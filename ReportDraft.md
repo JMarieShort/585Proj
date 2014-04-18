@@ -104,6 +104,7 @@ At this point, I did some data cleaning and also calculated some summary statist
 ```r
 # drop the retweets from the AT_test collection
 AT_test_noRT <- subset(AT_test, !isRetweet)
+saveRDS(AT_test_noRT, file = "AT_TW.Rdata")
 UH_test2 <- UH_test[!duplicated(UH_test$id), ]
 
 # get users account details
@@ -155,7 +156,7 @@ library(igraph)
 
 userStatsFinal <- readRDS("userStats415.Rdata")
 friend_edge <- readRDS("friends415.Rdata")
-
+AT_test_noRT <- readRDS("AT_TW.Rdata")
 ```
 
 The following variables are now available for each user:   id, screenName, description, statusesCount, followersCount, favoritesCount, friendsCount, url, name, created, protected, verified, location, listedCount, followRequestSent, profileImageUrl, min_dt, max_dt, n_tw, avg_RT, n_AT_tw, n_AT_ses, n_AT_RT, aflg
@@ -247,15 +248,96 @@ Now, subset to those associated with the company, and look at some summaries, an
 
 
 ```r
-uss_a <- subset(uss, aflg == TRUE)
-friends_a <- subset(friend_edge, node_id %in% uss_a$id & friend_id %in% uss_a$id)
+uss_a<-subset(uss,aflg == TRUE)
+#also removing the Chat host
+uss_a<-subset(uss_a,followersCount < 4000)
+friends_a<-subset(friend_edge,node_id %in% uss_a$id & friend_id %in% uss_a$id)
 
+uss_a$yr_splt<- (year(uss_a$created) >2012)
+
+uss_a$yr_splt <- factor(uss_a$yr_splt,
+levels  = c(TRUE,FALSE),
+labels = c( "New Accounts (2013 or 2014)","Prior Existing Accounts"))
+
+ggplot(uss_a,aes(x=log(followersCount),y=(avg_RT*n_tw)))+geom_point(aes(size=n_AT_tw))+facet_wrap(~yr_splt,nrow=2)+labs(x= 'Log (followers)', y = 'Retweets in User History',facet='Account created after 2012',size='Number of tweets \n contributed to chats')
 ```
 
+![plot of chunk unnamed-chunk-8](figure/unnamed-chunk-81.png) 
+
+```r
+
+
+ggplot(uss_a,aes(x=statusesCount,y=n_AT_tw))+geom_point()
+```
+
+![plot of chunk unnamed-chunk-8](figure/unnamed-chunk-82.png) 
+
+```r
+tws<-subset(AT_test_noRT,screenName %in% uss_a$screenName)
+summary(tws$retweetCount)
+```
+
+```
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+##   0.000   0.000   0.000   0.396   0.000   7.000
+```
+
+```r
 
 
 
+# summary(uss_a)
+# ggplot(aes(x=followersCount),data=uss_a)+geom_histogram()
+# ggplot(aes(x=log(followersCount), y=n_AT_tw),data=uss_a)+geom_point()
+ggplot(aes(x=n_AT_tw, y=n_AT_RT),data=uss_a)+geom_point(aes(size=followersCount))+stat_smooth(method="lm",se=FALSE)
+```
 
+![plot of chunk unnamed-chunk-8](figure/unnamed-chunk-83.png) 
+
+```r
+
+#average RT compared to avg chat RT
+ggplot(aes(x=avg_RT, y=(n_AT_RT/n_AT_tw)),data=uss_a)+geom_point(aes(size=followersCount))+
+  stat_smooth(method="lm",se=FALSE)
+```
+
+![plot of chunk unnamed-chunk-8](figure/unnamed-chunk-84.png) 
+
+```r
+
+#what about n_followers within the group??
+
+# with(uss_a,summary(n_AT_RT/followersCount))
+# with(uss_a,qplot(n_AT_RT/followersCount))
+
+#lots with small number of followers, a few with large
+twgr3 <- graph.data.frame(d = friends_a, 
+                         vertices = uss_a) 
+```
+
+```
+## Warning: the condition has length > 1 and only the first element will be used
+## Warning: the condition has length > 1 and only the first element will be used
+## Warning: the condition has length > 1 and only the first element will be used
+```
+
+```r
+ al <- layout.auto(twgr3)
+frl <- layout.fruchterman.reingold(twgr3)
+
+plot(twgr3, layout=al,
+     vertex.label=NA,#V(twgr2)$screenName, 
+    edge.arrow.size=0.1,
+    vertex.color =V(twgr3)$n_AT_ses,
+    vertex.size = log(V(twgr3)$followersCount),
+    main = 'Twitter Network')
+```
+
+![plot of chunk unnamed-chunk-8](figure/unnamed-chunk-85.png) 
+
+```r
+
+```
 
 
 
